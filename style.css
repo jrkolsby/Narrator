@@ -1,0 +1,27 @@
+body {
+	background: #000;
+}
+span {
+	font-size: 5em;
+	font-family: 'Helvetica Neue', 'Arial', sans-serif;
+	font-weight: 600;
+	color: #fff;
+	text-align: left;
+	margin: 0;
+	padding: 0;
+}
+span#alert {
+	color: #FF4747;
+	font-size: 2em;
+	display: block;	
+	margin-bottom: 30px;
+}
+span#uncertain {
+	color: #FFEC59;
+	font-style: italic;
+	font-weight: 500;
+	font-size: 4em;
+}
+span#spoken { 
+	color: #00DEA2;
+}
