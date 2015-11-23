@@ -15,17 +15,20 @@ var Transcript = function(text, voice) {
 		script.certain += t
 		updateTextWithScript();
 
-		voice.say(t, function(e) {
+		if (t.replace(" ", "").length > 0) {
+			
+			voice.say(t, function(e) {
 
-			var spoken = e.utterance.text;
+				var spoken = e.utterance.text;
 
-			script.read += spoken
-			script.certain = script.certain.substring(spoken.length,
-													  script.certain.length);
+				script.read += spoken
+				script.certain = script.certain.substring(spoken.length,
+														  script.certain.length);
 
-			updateTextWithScript();
+				updateTextWithScript();
 
-		});
+			});
+		}
 	}
 
 	this.setCertain = function(t) {
@@ -68,8 +71,10 @@ var TalkInterface = function() {
 	var script = "";
 	var voices = window.speechSynthesis.getVoices();
 
-	var VOICE_RATE = 1;
-	var VOICE_PITCH = 1;
+	var VOICE_RATE = 1,
+		VOICE_PITCH = 1,
+		LANG = "en-US";
+		URI = 'native';
 
 	this.say = function(u, ended) {
 		var msg = new SpeechSynthesisUtterance();
@@ -77,6 +82,9 @@ var TalkInterface = function() {
 		msg.text = u;
 		msg.pitch = VOICE_PITCH;
 		msg.rate = VOICE_RATE;
+		msg.voiceURI = URI;
+
+		msg.lang = LANG;
 
 		msg.onend = function(e) { ended(e) }
 
@@ -101,11 +109,13 @@ window.onload = function() {
 		recognition.onstart = function() {}
 
 		recognition.onend = function() {
+			console.log("end");
 			recognition.start();
 			script.addToCertain(" ");
 		}
 
 		recognition.onresult = function(event) {
+			console.log("result");
 			var uncertainAggregate = "";
 			for (var i = event.resultIndex; i < event.results.length; ++i) {
 				var addition = event.results[i][0].transcript;
