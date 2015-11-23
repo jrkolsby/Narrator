@@ -11,23 +11,19 @@ var Transcript = function(text, voice) {
 						script.uncertain);
 	}
 
+	var addToRead = function(t) {
+		script.read += t;
+		script.certain = script.certain.substring(t.length,
+												  script.certain.length);
+		updateTextWithScript();		
+	}
+
 	this.addToCertain = function(t) {
 		script.certain += t
 		updateTextWithScript();
 
 		if (t.replace(" ", "").length > 0) {
-			
-			voice.say(t, function(e) {
-
-				var spoken = e.utterance.text;
-
-				script.read += spoken
-				script.certain = script.certain.substring(spoken.length,
-														  script.certain.length);
-
-				updateTextWithScript();
-
-			});
+			voice.say(t, function(e) { addToRead(e.utterance.text) });
 		}
 	}
 
@@ -90,7 +86,6 @@ var TalkInterface = function() {
 
 		window.speechSynthesis.speak(msg);
 	}
-
 }
 window.onload = function() {
 
@@ -128,6 +123,10 @@ window.onload = function() {
 		recognition.onerror = function(event) {
 			text.setAlert(text.ERROR_ALERT + event.error);
 		}
+
+		recognition.onspeechstart = function() {}
+		recognition.onspeechend = function() {}
+
 		recognition.start();
 	}
 }
