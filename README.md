@@ -4,6 +4,6 @@ This is a small application built for the production of Columbia University's "L
 
 ##TODO
 
-* Improve turnaround time from input to output by using recognition.stop() whenever the certainty of a non-final result is above a certain threshhold, then immediately restart. 
 * Implement recognition of contenteditable changes made to the certain element
-* Fix error in Transcript's addToRead() function where the endings of script.certain strings would be retained when getting added to script.read
+* Fix bug where no space is inserted upon recognition's restart
+* Fix bug where sometimes the entire certain string is printed as uncertain just before an isFinal result is returned
