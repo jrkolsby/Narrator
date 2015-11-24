@@ -39,7 +39,8 @@ var Transcript = function(text, voice) {
 		return s.replace(/\s+$/, '').split(/\s+/).length-1;
 	}
 
-	var GROUPING_MINIMUM = 5;
+	var GROUPING_MINIMUM = 5,
+		CONFIDENCE_THRESHOLD = 0.7;
 
 	this.handleResult = function(event) {
 
@@ -49,6 +50,7 @@ var Transcript = function(text, voice) {
 			certain,
 			uncertain;
 
+		// CLEAN UP
 		if (isFinal) {
 			certain = event.results[i][0].transcript;
 			uncertain = "";
@@ -56,8 +58,13 @@ var Transcript = function(text, voice) {
 			certain = event.results[i][0].transcript;
 			uncertain = event.results[i+1][0].transcript;
 		} else {
-			certain = "";
-			uncertain = event.results[i][0].transcript;
+			if (event.results[i][0].confidence > CONFIDENCE_THRESHOLD) {
+				certain = event.results[i][0].transcript;
+				uncertain = "";
+			} else {
+				certain = "";
+				uncertain = event.results[i][0].transcript;
+			}
 		}
 
 		script.uncertain = uncertain;
@@ -74,6 +81,7 @@ var Transcript = function(text, voice) {
 
 			if (wordCount(script.count) >= GROUPING_MINIMUM || isFinal) {
 				voice.say(script.count, function(e) {
+					
 					var spoken = e.utterance.text;
 					var newUnread = compareStrings(spoken, script.unread);
 
