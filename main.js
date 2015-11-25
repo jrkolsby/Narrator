@@ -12,7 +12,15 @@ var Transcript = function(text, voice) {
 		{word: "f*****", replace: "fucked"},
 		{word: "f******", replace: "fucking"},
 		{word: "s***", replace: "shit"},
+		{word: "a**", replace: "ass"},
 	];
+
+	var replaceWords = function(s) {
+		for (var i = 0; i < replace.length; i++) {
+			s = s.replace(replace[i].word, replace[i].replace);
+			return s;
+		}
+	}
 
 	var updateTextWithScript = function() {
 		text.setRead(script.read);
@@ -40,11 +48,11 @@ var Transcript = function(text, voice) {
 	}
 
 	var wordCount = function(s) {
-		return s.replace(/\s+$/, '').split(/\s+/).length-1;
+		return s.replace(/^\s+|\s+$/g,'').split(/\s+/).length;
 	}
 
-	var GROUPING_MINIMUM = 2,
-		CONFIDENCE_THRESHOLD = 0.4, // Set >1 to prevent speaking of non-final results
+	var GROUPING_MINIMUM = 3, // Set to 0 to prevent word grouping
+		CONFIDENCE_THRESHOLD = 2; // Set >1 to prevent output of non-final results
 
 	this.handleResult = function(event) {
 
@@ -56,9 +64,11 @@ var Transcript = function(text, voice) {
 			if (event.results[i][0].confidence > CONFIDENCE_THRESHOLD ||
 				event.results[i].isFinal) {
 
-				newCertain = event.results[i][0].transcript;
+				newCertain = replaceWords(event.results[i][0].transcript);
 
-			} else { newUncertain = event.results[i][0].transcript }
+			} else {
+				newUncertain += replaceWords(event.results[i][0].transcript);
+			}
 
 			if (event.results[i].isFinal) { isFinal = true }
 		}
@@ -92,6 +102,11 @@ var Transcript = function(text, voice) {
 
 		if (isFinal) { script.certain = "" }
 	}
+
+	this.newSession = function() {
+		script.unread += " ";
+		updateTextWithScript();
+	}
 }
 
 var TextInterface = function() {
@@ -123,7 +138,7 @@ var TalkInterface = function() {
 
 	this.say = function(u, ended) {
 
-		if (u.replace(/\s/, '').length > 0) {
+		if (u.replace(/\s/g, '').length > 0) {
 			var msg = new SpeechSynthesisUtterance();
 
 			msg.text = u;
@@ -155,7 +170,7 @@ window.onload = function() {
 		recognition.onstart = function() {}
 
 		recognition.onend = function() {
-			console.log("restart");
+			script.newSession();
 			recognition.start();
 		}
 
