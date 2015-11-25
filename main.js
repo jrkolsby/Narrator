@@ -8,12 +8,16 @@ var Transcript = function(text, voice) {
 		uncertain: "" // Unconfident words in the current phrase
 	}
 
+	var replace = [
+		{word: "f*****", replace: "fucked"},
+		{word: "f******", replace: "fucking"},
+		{word: "s***", replace: "shit"},
+	];
+
 	var updateTextWithScript = function() {
 		text.setRead(script.read);
 		text.setUnread(script.unread);
 		text.setUncertain(script.uncertain);
-
-		console.log(script);
 	}
 
 	var compareStrings = function(a, b) {
@@ -39,62 +43,54 @@ var Transcript = function(text, voice) {
 		return s.replace(/\s+$/, '').split(/\s+/).length-1;
 	}
 
-	var GROUPING_MINIMUM = 5,
-		CONFIDENCE_THRESHOLD = 0.7;
+	var GROUPING_MINIMUM = 2,
+		CONFIDENCE_THRESHOLD = 0.4, // Set >1 to prevent speaking of non-final results
 
 	this.handleResult = function(event) {
 
-		var i = event.resultIndex,
-			resultLength = event.results.length-i,
-			isFinal = event.results[i].isFinal,
-			certain,
-			uncertain;
+		var newCertain = "",
+			newUncertain = "";
+			isFinal = false;
 
-		// CLEAN UP
-		if (isFinal) {
-			certain = event.results[i][0].transcript;
-			uncertain = "";
-		} else if (resultLength > 1) {
-			certain = event.results[i][0].transcript;
-			uncertain = event.results[i+1][0].transcript;
-		} else {
-			if (event.results[i][0].confidence > CONFIDENCE_THRESHOLD) {
-				certain = event.results[i][0].transcript;
-				uncertain = "";
-			} else {
-				certain = "";
-				uncertain = event.results[i][0].transcript;
-			}
+		for (var i = event.resultIndex; i < event.results.length; i++) {
+			if (event.results[i][0].confidence > CONFIDENCE_THRESHOLD ||
+				event.results[i].isFinal) {
+
+				newCertain = event.results[i][0].transcript;
+
+			} else { newUncertain = event.results[i][0].transcript }
+
+			if (event.results[i].isFinal) { isFinal = true }
 		}
 
-		script.uncertain = uncertain;
+		script.uncertain = newUncertain;
 		updateTextWithScript();
 
-		if (certain !== "") {
-			var certainAddition = compareStrings(script.certain, certain);
+		var certainAddition = compareStrings(script.certain, newCertain);
 
-			script.certain += certainAddition;
-			script.unread += certainAddition;
-			script.count += certainAddition;
+		script.certain += certainAddition;
+		script.unread += certainAddition;
+		script.count += certainAddition;
 
-			updateTextWithScript();
+		updateTextWithScript();
 
-			if (wordCount(script.count) >= GROUPING_MINIMUM || isFinal) {
-				voice.say(script.count, function(e) {
-					
-					var spoken = e.utterance.text;
-					var newUnread = compareStrings(spoken, script.unread);
+		if (wordCount(script.count) >= GROUPING_MINIMUM || isFinal) {
 
-					script.read += spoken;
-					script.unread = newUnread;
+			voice.say(script.count, function(e) {
+				
+				var newRead = e.utterance.text;
+				var newUnread = compareStrings(newRead, script.unread);
 
-					updateTextWithScript();
-				});
-				script.count = "";
-			}
+				script.read += newRead;
+				script.unread = newUnread;
 
-			if (isFinal) { script.certain = "" }
+				updateTextWithScript();
+			});
+
+			script.count = "";
 		}
+
+		if (isFinal) { script.certain = "" }
 	}
 }
 
@@ -127,17 +123,19 @@ var TalkInterface = function() {
 
 	this.say = function(u, ended) {
 
-		var msg = new SpeechSynthesisUtterance();
+		if (u.replace(/\s/, '').length > 0) {
+			var msg = new SpeechSynthesisUtterance();
 
-		msg.text = u;
-		msg.pitch = VOICE_PITCH;
-		msg.rate = VOICE_RATE;
-		msg.voiceURI = URI;
-		msg.lang = LANG;
+			msg.text = u;
+			msg.pitch = VOICE_PITCH;
+			msg.rate = VOICE_RATE;
+			msg.voiceURI = URI;
+			msg.lang = LANG;
 
-		msg.onend = function(e) { ended(e) }
+			msg.onend = function(e) { ended(e) }
 
-		window.speechSynthesis.speak(msg);
+			window.speechSynthesis.speak(msg);
+		}
 	}
 }
 
