@@ -5,4 +5,3 @@ This is a small application built for the production of Columbia University's "L
 ##TODO
 
 * Implement recognition of contenteditable changes made to the certain element
-* Fix bug where no space is inserted upon recognition's restart
