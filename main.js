@@ -8,12 +8,24 @@ var Transcript = function(text, voice) {
 		uncertain: "" // Unconfident words in the current phrase
 	}
 
+	var replace = [
+		{word: "f*****", replace: "fucked"},
+		{word: "f******", replace: "fucking"},
+		{word: "s***", replace: "shit"},
+		{word: "a**", replace: "ass"},
+	];
+
+	var replaceWords = function(s) {
+		for (var i = 0; i < replace.length; i++) {
+			s = s.replace(replace[i].word, replace[i].replace);
+			return s;
+		}
+	}
+
 	var updateTextWithScript = function() {
 		text.setRead(script.read);
 		text.setUnread(script.unread);
 		text.setUncertain(script.uncertain);
-
-		console.log(script);
 	}
 
 	var compareStrings = function(a, b) {
@@ -36,57 +48,64 @@ var Transcript = function(text, voice) {
 	}
 
 	var wordCount = function(s) {
-		return s.replace(/\s+$/, '').split(/\s+/).length-1;
+		return s.replace(/^\s+|\s+$/g,'').split(/\s+/).length;
 	}
 
-	var GROUPING_MINIMUM = 5;
+	var GROUPING_MINIMUM = 3, // Set to 0 to prevent word grouping
+		CONFIDENCE_THRESHOLD = 2; // Set >1 to prevent output of non-final results
 
 	this.handleResult = function(event) {
 
-		var i = event.resultIndex,
-			resultLength = event.results.length-i,
-			isFinal = event.results[i].isFinal,
-			certain,
-			uncertain;
+		var newCertain = "",
+			newUncertain = "";
+			isFinal = false;
 
-		if (isFinal) {
-			certain = event.results[i][0].transcript;
-			uncertain = "";
-		} else if (resultLength > 1) {
-			certain = event.results[i][0].transcript;
-			uncertain = event.results[i+1][0].transcript;
-		} else {
-			certain = "";
-			uncertain = event.results[i][0].transcript;
-		}
+		for (var i = event.resultIndex; i < event.results.length; i++) {
+			if (event.results[i][0].confidence > CONFIDENCE_THRESHOLD ||
+				event.results[i].isFinal) {
 
-		script.uncertain = uncertain;
-		updateTextWithScript();
+				newCertain = replaceWords(event.results[i][0].transcript);
 
-		if (certain !== "") {
-			var certainAddition = compareStrings(script.certain, certain);
-
-			script.certain += certainAddition;
-			script.unread += certainAddition;
-			script.count += certainAddition;
-
-			updateTextWithScript();
-
-			if (wordCount(script.count) >= GROUPING_MINIMUM || isFinal) {
-				voice.say(script.count, function(e) {
-					var spoken = e.utterance.text;
-					var newUnread = compareStrings(spoken, script.unread);
-
-					script.read += spoken;
-					script.unread = newUnread;
-
-					updateTextWithScript();
-				});
-				script.count = "";
+			} else {
+				newUncertain += replaceWords(event.results[i][0].transcript);
 			}
 
-			if (isFinal) { script.certain = "" }
+			if (event.results[i].isFinal) { isFinal = true }
 		}
+
+		script.uncertain = newUncertain;
+		updateTextWithScript();
+
+		var certainAddition = compareStrings(script.certain, newCertain);
+
+		script.certain += certainAddition;
+		script.unread += certainAddition;
+		script.count += certainAddition;
+
+		updateTextWithScript();
+
+		if (wordCount(script.count) >= GROUPING_MINIMUM || isFinal) {
+
+			voice.say(script.count, function(e) {
+				
+				var newRead = e.utterance.text;
+				var newUnread = compareStrings(newRead, script.unread);
+
+				script.read += newRead;
+				script.unread = newUnread;
+
+				updateTextWithScript();
+			});
+
+			script.count = "";
+		}
+
+		if (isFinal) { script.certain = "" }
+	}
+
+	this.newSession = function() {
+		script.unread += " ";
+		updateTextWithScript();
 	}
 }
 
@@ -119,17 +138,19 @@ var TalkInterface = function() {
 
 	this.say = function(u, ended) {
 
-		var msg = new SpeechSynthesisUtterance();
+		if (u.replace(/\s/g, '').length > 0) {
+			var msg = new SpeechSynthesisUtterance();
 
-		msg.text = u;
-		msg.pitch = VOICE_PITCH;
-		msg.rate = VOICE_RATE;
-		msg.voiceURI = URI;
-		msg.lang = LANG;
+			msg.text = u;
+			msg.pitch = VOICE_PITCH;
+			msg.rate = VOICE_RATE;
+			msg.voiceURI = URI;
+			msg.lang = LANG;
 
-		msg.onend = function(e) { ended(e) }
+			msg.onend = function(e) { ended(e) }
 
-		window.speechSynthesis.speak(msg);
+			window.speechSynthesis.speak(msg);
+		}
 	}
 }
 
@@ -149,7 +170,7 @@ window.onload = function() {
 		recognition.onstart = function() {}
 
 		recognition.onend = function() {
-			console.log("restart");
+			script.newSession();
 			recognition.start();
 		}
 
