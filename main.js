@@ -51,8 +51,8 @@ var Transcript = function(text, voice) {
 		return s.replace(/^\s+|\s+$/g,'').split(/\s+/).length;
 	}
 
-	var GROUPING_MINIMUM = 3, // Set to 0 to prevent word grouping
-		CONFIDENCE_THRESHOLD = 2; // Set >1 to prevent output of non-final results
+	var GROUPING_MINIMUM = 2, // Set to 0 to prevent word grouping
+		CONFIDENCE_THRESHOLD = 0.7; // Set >1 to prevent output of non-final results
 
 	this.handleResult = function(event) {
 
